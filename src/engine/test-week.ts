@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { fillWeek, nutritionSummary } from './fillWeek'
 import * as fs from 'fs'
+import { savePlan } from './savePlan'
 
 // read .env.local manually since this runs outside Next.js
 const env = fs.readFileSync('.env.local', 'utf8')
@@ -43,6 +44,9 @@ async function main() {
   nutritionSummary(plan, [2000, 60, 250, 65, 30]).forEach((n) =>
     console.log(`  ${n.name}: ${n.total} / ${n.target} (${n.pct}%)`)
   )
+  const { data: household } = await supabase.from('households').select('id').limit(1).single()
+  const saved = await savePlan(supabase, household.id, '2026-07-27', plan)
+  console.log(`\nSAVED: plan ${saved.planId} with ${saved.entryCount} entries`)
 }
 
 main()
