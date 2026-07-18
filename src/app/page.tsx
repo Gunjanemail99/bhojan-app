@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase'
 
+import RateMeal from '@/components/RateMeal'
+
 export default async function Home() {
   const { data: members } = await supabase.from('members').select('*').order('name')
   const { data: meals } = await supabase.from('meals').select('*').order('code')
@@ -42,6 +44,7 @@ export default async function Home() {
                   · {m.effort} · every {m.freq_days}d · {m.calories} kcal, {m.protein}g protein
                   {m.needs_soak && ' · ⏳ soak'}
                 </span>
+                <RateMeal mealId={m.id} members={members ?? []} />
               </div>
             ))}
           </div>
