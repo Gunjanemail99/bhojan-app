@@ -1,15 +1,13 @@
 import { supabase } from '@/lib/supabase'
-
 import RateMeal from '@/components/RateMeal'
+import WeekPlan from '@/components/WeekPlan'
 
 export default async function Home() {
   const { data: members } = await supabase.from('members').select('*').order('name')
   const { data: meals } = await supabase.from('meals').select('*').order('code')
   const { data: rules } = await supabase.from('rules').select('*').order('code')
-
   const { data: ratings } = await supabase.from('meal_ratings').select('meal_id, rating')
 
-  // Aggregate: turn many rating rows into one summary per meal
   const summary: Record<string, { avg: number; count: number }> = {}
   for (const r of ratings ?? []) {
     const s = summary[r.meal_id] ?? { avg: 0, count: 0 }
@@ -19,6 +17,16 @@ export default async function Home() {
     summary[r.meal_id] = s
   }
 
+  const { data: plan } = await supabase
+    .from('plans').select('*').order('week_start', { ascending: false }).limit(1).maybeSingle()
+
+  const { data: planEntries } = plan
+    ? await supabase
+        .from('plan_entries')
+        .select('entry_date, slot, status, meals(name, effort), tiffin_items(name), snacks(name), fruits(name)')
+        .eq('plan_id', plan.id)
+    : { data: [] }
+
   const bySlot = (slot: string) => meals?.filter((m) => m.slot === slot) ?? []
   const slotNames: Record<string, string> = { B: 'Breakfast', L: 'Lunch', D: 'Dinner' }
 
@@ -26,6 +34,11 @@ export default async function Home() {
     <main style={{ padding: 32, fontFamily: 'sans-serif', maxWidth: 760, margin: '0 auto' }}>
       <h1 style={{ marginBottom: 4 }}>Bhojan</h1>
       <p style={{ color: '#666', marginTop: 0 }}>Household Food Operating System</p>
+
+      <section style={{ marginTop: 28 }}>
+        <h2>This Week</h2>
+        <WeekPlan plan={plan} entries={planEntries ?? []} />
+      </section>
 
       <section style={{ marginTop: 28 }}>
         <h2>Household ({members?.length ?? 0})</h2>
