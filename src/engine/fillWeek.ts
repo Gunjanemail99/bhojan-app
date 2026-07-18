@@ -1,5 +1,6 @@
 import { filterMeals, Meal } from './filter'
 import { scoreMeals } from './score'
+import { pickSnack, pickTiffin, pickFruit, SimpleItem } from './pickers'
 
 type FullMeal = Meal & {
   calories: number; protein: number; carbs: number; fat: number; fiber: number
@@ -7,16 +8,19 @@ type FullMeal = Meal & {
 
 export type WeekInput = {
   meals: FullMeal[]
-  weekStart: string                        // 'YYYY-MM-DD' (a Monday)
-  daysSinceServed: Record<string, number>  // history before this week
+  weekStart: string
+  daysSinceServed: Record<string, number>
   avgRating: Record<string, number>
-  dailyTargets: number[]                   // [kcal, protein, carbs, fat, fiber] per day
+  dailyTargets: number[]
+  tiffin: SimpleItem[]
+  snacks: SimpleItem[]
+  fruits: SimpleItem[]
 }
 
 export type PlannedSlot = {
   date: string
   slot: string
-  meal: FullMeal | null
+  meal: any
   score: number
   why: [string, number][]
   rejectedCount: number
@@ -28,9 +32,19 @@ const addDays = (iso: string, n: number) => {
   return d.toISOString().slice(0, 10)
 }
 
+function addNutrition(totals: number[], item: any, factor: number) {
+  totals[0] += (item.calories ?? 0) * factor
+  totals[1] += (item.protein ?? 0) * factor
+  totals[2] += (item.carbs ?? 0) * factor
+  totals[3] += (item.fat ?? 0) * factor
+  totals[4] += (item.fiber ?? 0) * factor
+}
+
 export function fillWeek(input: WeekInput): PlannedSlot[] {
   const plan: PlannedSlot[] = []
   const usedThisWeek: string[] = []
+  const recentTiffin: string[] = []
+  const recentSnacks: string[] = []
   const nutrition = [0, 0, 0, 0, 0]
   let elaborateUsed = 0
 
@@ -38,16 +52,15 @@ export function fillWeek(input: WeekInput): PlannedSlot[] {
 
   for (let d = 0; d < 7; d++) {
     const date = addDays(input.weekStart, d)
-    const dow = new Date(date).getDay()          // 0 = Sunday, 6 = Saturday
+    const dow = new Date(date).getDay()
     const isWeekend = dow === 0 || dow === 6
 
     for (const slot of ['B', 'L', 'D']) {
-      // Stage 1: what's allowed?
       const { eligible, rejected } = filterMeals(input.meals, {
         slot,
         daysSinceServed: input.daysSinceServed,
         alreadyThisWeek: usedThisWeek,
-        soakPossible: true,                       // planning ahead, so soaking is fine
+        soakPossible: true,
       })
 
       if (eligible.length === 0) {
@@ -55,7 +68,6 @@ export function fillWeek(input: WeekInput): PlannedSlot[] {
         continue
       }
 
-      // Stage 2: what's best?
       const ranked = scoreMeals(eligible as FullMeal[], {
         daysSinceServed: input.daysSinceServed,
         avgRating: input.avgRating,
@@ -68,18 +80,38 @@ export function fillWeek(input: WeekInput): PlannedSlot[] {
       const winner = ranked[0]
       plan.push({
         date, slot,
-        meal: winner.meal as FullMeal,
+        meal: winner.meal,
         score: winner.score,
         why: winner.breakdown,
         rejectedCount: rejected.length,
       })
 
-      // --- update the context so the next choice knows about this one ---
       usedThisWeek.push(winner.meal.id)
-      const m = winner.meal as FullMeal
-      nutrition[0] += m.calories; nutrition[1] += m.protein; nutrition[2] += m.carbs
-      nutrition[3] += m.fat;      nutrition[4] += m.fiber
-      if (m.effort === 'elaborate') elaborateUsed++
+      addNutrition(nutrition, winner.meal, 1)
+      if ((winner.meal as FullMeal).effort === 'elaborate') elaborateUsed++
+    }
+
+    // --- non-meal slots: tiffin (school days), snack, fruit ---
+    const prevDinner = plan.find((p) => p.date === addDays(date, -1) && p.slot === 'D')?.meal?.name ?? null
+
+    const tif = pickTiffin(input.tiffin, date, recentTiffin, prevDinner)
+    if (tif) {
+      recentTiffin.push(tif.id)
+      plan.push({ date, slot: 'T', meal: tif, score: 0, why: [['tiffin rotation', 0]], rejectedCount: 0 })
+      addNutrition(nutrition, tif, 0.5)
+    }
+
+    const sn = pickSnack(input.snacks, date, recentSnacks)
+    if (sn) {
+      recentSnacks.push(sn.id)
+      plan.push({ date, slot: 'S', meal: sn, score: 0, why: [['snack rotation', 0]], rejectedCount: 0 })
+      addNutrition(nutrition, sn, 0.5)
+    }
+
+    const fr = pickFruit(input.fruits, date)
+    if (fr) {
+      plan.push({ date, slot: 'F', meal: fr, score: 0, why: [['daily fruit', 0]], rejectedCount: 0 })
+      addNutrition(nutrition, fr, 1)
     }
   }
 
@@ -90,8 +122,8 @@ export function nutritionSummary(plan: PlannedSlot[], dailyTargets: number[]) {
   const totals = [0, 0, 0, 0, 0]
   for (const p of plan) {
     if (!p.meal) continue
-    totals[0] += p.meal.calories; totals[1] += p.meal.protein; totals[2] += p.meal.carbs
-    totals[3] += p.meal.fat;      totals[4] += p.meal.fiber
+    const factor = p.slot === 'T' || p.slot === 'S' ? 0.5 : 1
+    addNutrition(totals, p.meal, factor)
   }
   const names = ['kcal', 'protein', 'carbs', 'fat', 'fiber']
   return names.map((n, i) => ({

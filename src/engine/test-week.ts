@@ -11,6 +11,9 @@ const supabase = createClient(url, key)
 async function main() {
   const { data: meals } = await supabase.from('meals').select('*')
   const { data: ratings } = await supabase.from('meal_ratings').select('meal_id, rating')
+  const { data: tiffin } = await supabase.from('tiffin_items').select('*')
+  const { data: snacks } = await supabase.from('snacks').select('*')
+  const { data: fruits } = await supabase.from('fruits').select('*')
 
   const avgRating: Record<string, number> = {}
   const counts: Record<string, number> = {}
@@ -25,6 +28,9 @@ async function main() {
     daysSinceServed: {},
     avgRating,
     dailyTargets: [2000, 60, 250, 65, 30],
+    tiffin: (tiffin ?? []) as any,
+    snacks: (snacks ?? []) as any,
+    fruits: (fruits ?? []) as any,
   })
 
   let currentDate = ''
