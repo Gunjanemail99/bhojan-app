@@ -7,6 +7,18 @@ export default async function Home() {
   const { data: meals } = await supabase.from('meals').select('*').order('code')
   const { data: rules } = await supabase.from('rules').select('*').order('code')
 
+  const { data: ratings } = await supabase.from('meal_ratings').select('meal_id, rating')
+
+  // Aggregate: turn many rating rows into one summary per meal
+  const summary: Record<string, { avg: number; count: number }> = {}
+  for (const r of ratings ?? []) {
+    const s = summary[r.meal_id] ?? { avg: 0, count: 0 }
+    const total = s.avg * s.count + r.rating
+    s.count += 1
+    s.avg = total / s.count
+    summary[r.meal_id] = s
+  }
+
   const bySlot = (slot: string) => meals?.filter((m) => m.slot === slot) ?? []
   const slotNames: Record<string, string> = { B: 'Breakfast', L: 'Lunch', D: 'Dinner' }
 
@@ -44,6 +56,11 @@ export default async function Home() {
                   · {m.effort} · every {m.freq_days}d · {m.calories} kcal, {m.protein}g protein
                   {m.needs_soak && ' · ⏳ soak'}
                 </span>
+                {summary[m.id] && (
+                  <span style={{ marginLeft: 8, fontSize: 12, color: '#b8860b', fontWeight: 600 }}>
+                    ⭐ {summary[m.id].avg.toFixed(1)} ({summary[m.id].count})
+                  </span>
+                )}
                 <RateMeal mealId={m.id} members={members ?? []} />
               </div>
             ))}
