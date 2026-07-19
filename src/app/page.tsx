@@ -3,6 +3,7 @@ import RateMeal from '@/components/RateMeal'
 import WeekPlan from '@/components/WeekPlan'
 import GenerateButton from '@/components/GenerateButton'
 import Today from '@/components/Today'
+import PrepAlert from '@/components/PrepAlert'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,6 +52,11 @@ export default async function Home() {
 
   return (
     <main style={{ padding: 32, fontFamily: 'sans-serif', maxWidth: 760, margin: '0 auto' }}>
+      <PrepAlert
+        tasks={(planEntries ?? [])
+          .filter((e: any) => e.meals?.needs_soak && e.entry_date === new Date(Date.now() + 86400000).toISOString().slice(0, 10))
+          .map((e: any) => ({ name: e.meals.name, forDate: e.entry_date, slot: e.slot }))}
+      />
       <h1 style={{ marginBottom: 4 }}>Bhojan</h1>
       <p style={{ color: '#666', marginTop: 0 }}>Household Food Operating System</p>
 

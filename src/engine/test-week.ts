@@ -25,7 +25,7 @@ async function main() {
 
   const plan = fillWeek({
     meals: meals as any,
-    weekStart: '2026-07-27',
+    weekStart: '2026-07-16',
     daysSinceServed: {},
     avgRating,
     dailyTargets: [2000, 60, 250, 65, 30],

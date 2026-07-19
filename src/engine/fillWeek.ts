@@ -15,6 +15,7 @@ export type WeekInput = {
   tiffin: SimpleItem[]
   snacks: SimpleItem[]
   fruits: SimpleItem[]
+  planningFrom?: string      // defaults to today
 }
 
 export type PlannedSlot = {
@@ -24,6 +25,14 @@ export type PlannedSlot = {
   score: number
   why: [string, number][]
   rejectedCount: number
+}
+
+const todayIso = () => new Date().toISOString().slice(0, 10)
+
+// A soak-requiring meal is only feasible if the evening BEFORE it
+// is still in the future at the moment of planning.
+function canSoakFor(mealDate: string, planningFrom: string): boolean {
+  return addDays(mealDate, -1) >= planningFrom
 }
 
 const addDays = (iso: string, n: number) => {
@@ -60,8 +69,14 @@ export function fillWeek(input: WeekInput): PlannedSlot[] {
         slot,
         daysSinceServed: input.daysSinceServed,
         alreadyThisWeek: usedThisWeek,
-        soakPossible: true,
+        soakPossible: canSoakFor(date, input.planningFrom ?? todayIso()),
       })
+
+if (slot === 'B' && date === input.weekStart) {
+        const soakOk = canSoakFor(date, input.planningFrom ?? todayIso())
+        const soakMeals = input.meals.filter((m: any) => m.slot === 'B' && m.needs_soak)
+        
+      }
 
       if (eligible.length === 0) {
         plan.push({ date, slot, meal: null, score: 0, why: [], rejectedCount: rejected.length })
@@ -114,7 +129,11 @@ export function fillWeek(input: WeekInput): PlannedSlot[] {
       addNutrition(nutrition, fr, 1)
     }
   }
-
+// meals needing a soak the evening before the plan even starts
+  const preWeekSoaks = plan.filter(
+    (p) => p.meal?.needs_soak && addDays(p.date, -1) < input.weekStart
+  )
+  ;(plan as any).preWeekSoaks = preWeekSoaks
   return plan
 }
 
