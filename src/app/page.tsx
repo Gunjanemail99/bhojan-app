@@ -9,7 +9,8 @@ import Insights from '@/components/Insights'
 
 export const dynamic = 'force-dynamic'
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
+  const params = await searchParams
   const { data: members } = await supabase.from('members').select('*').order('name')
   const { data: meals } = await supabase.from('meals').select('*').order('code')
   const { data: rules } = await supabase.from('rules').select('*').order('code')
@@ -24,23 +25,14 @@ export default async function Home() {
     summary[r.meal_id] = s
   }
 
-  const today = new Date().toISOString().slice(0, 10)
+const { data: allPlans } = await supabase
+    .from('plans').select('week_start').order('week_start', { ascending: false })
 
-   // the week we're currently in (started on or before today)
-  const { data: currentPlan } = await supabase
-    .from('plans').select('*')
-    .lte('week_start', today)
-    .order('week_start', { ascending: false })
-    .limit(1).maybeSingle()
+  const selectedWeek = params.week ?? allPlans?.[0]?.week_start
 
-  // otherwise, the soonest upcoming week
-  const { data: upcomingPlan } = await supabase
-    .from('plans').select('*')
-    .gt('week_start', today)
-    .order('week_start', { ascending: true })
-    .limit(1).maybeSingle()
-
-  const plan = currentPlan ?? upcomingPlan
+  const { data: plan } = selectedWeek
+    ? await supabase.from('plans').select('*').eq('week_start', selectedWeek).maybeSingle()
+    : { data: null }
 
   const { data: planEntries } = plan
     ? await supabase
@@ -75,8 +67,8 @@ export default async function Home() {
         <h2>Today</h2>
         <Today
           entries={planEntries ?? []}
-          today="2026-07-20"
-          tomorrow="2026-07-21"
+          today={new Date().toISOString().slice(0, 10)}
+          tomorrow={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
         />
       </section>
 
@@ -85,7 +77,26 @@ export default async function Home() {
       <section style={{ marginTop: 28 }}>
         <h2 style={{ display: 'inline' }}>This Week</h2>
         <GenerateButton />
-              </section>
+        <div style={{ marginTop: 8, marginBottom: 10 }}>
+          {(allPlans ?? []).map((p: any) => (
+            <a
+              key={p.week_start}
+              href={`/?week=${p.week_start}`}
+              style={{
+                marginRight: 8, fontSize: 12, padding: '4px 9px', borderRadius: 6,
+                textDecoration: 'none',
+                border: '1px solid ' + (p.week_start === selectedWeek ? '#333' : '#ddd'),
+                background: p.week_start === selectedWeek ? '#333' : '#fff',
+                color: p.week_start === selectedWeek ? '#fff' : '#555',
+              }}
+            >
+              {p.week_start}
+            </a>
+          ))}
+        </div>
+        <WeekPlan plan={plan} entries={planEntries ?? []} />
+      </section>
+
   <section style={{ marginTop: 28 }}>
         <h2>Shopping List</h2>
         <ShoppingList
@@ -95,7 +106,7 @@ export default async function Home() {
           savedStatus={savedStatus}
         />
       </section>
-      
+
 <section style={{ marginTop: 28 }}>
         <h2>Insights</h2>
         <Insights entries={planEntries ?? []} />

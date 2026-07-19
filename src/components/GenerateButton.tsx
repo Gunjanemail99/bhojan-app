@@ -4,31 +4,44 @@ import { useState } from 'react'
 import { generateWeek } from '@/app/actions'
 
 export default function GenerateButton() {
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<number | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
 
-  async function run() {
-    setBusy(true)
+  async function run(offset: number) {
+    setBusy(offset)
     setMsg(null)
     try {
-      const res = await generateWeek()
+      const res = await generateWeek(offset)
       setMsg(`Planned week of ${res.weekStart} — ${res.entryCount} entries`)
     } catch (e: any) {
       setMsg('Error: ' + e.message)
     }
-    setBusy(false)
+    setBusy(null)
   }
 
+  const btn = (label: string, offset: number) => (
+    <button
+      onClick={() => run(offset)}
+      disabled={busy !== null}
+      style={{
+        marginLeft: 8, padding: '6px 12px', fontSize: 13, borderRadius: 6,
+        cursor: busy !== null ? 'wait' : 'pointer',
+        border: '1px solid #333', background: busy === offset ? '#eee' : '#fff',
+      }}
+    >
+      {busy === offset ? 'Planning…' : label}
+    </button>
+  )
+
   return (
-    <span style={{ marginLeft: 12 }}>
-      <button
-        onClick={run}
-        disabled={busy}
-        style={{ padding: '6px 12px', cursor: busy ? 'wait' : 'pointer', borderRadius: 6, border: '1px solid #333', background: busy ? '#eee' : '#fff', fontSize: 13 }}
-      >
-        {busy ? 'Planning…' : '✨ Generate Next Week'}
-      </button>
-      {msg && <span style={{ marginLeft: 10, fontSize: 12, color: msg.startsWith('Error') ? 'red' : 'green' }}>{msg}</span>}
+    <span>
+      {btn('Plan this week', 0)}
+      {btn('Plan next week', 1)}
+      {msg && (
+        <div style={{ marginTop: 6, fontSize: 12, color: msg.startsWith('Error') ? 'red' : 'green' }}>
+          {msg}
+        </div>
+      )}
     </span>
   )
 }

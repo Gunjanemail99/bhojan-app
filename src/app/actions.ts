@@ -5,15 +5,16 @@ import { supabase } from '@/lib/supabase'
 import { fillWeek } from '@/engine/fillWeek'
 import { savePlan } from '@/engine/savePlan'
 
-function nextMonday(): string {
+function mondayOf(offsetWeeks: number): string {
   const d = new Date()
-  const day = d.getDay()                      // 0 = Sun
-  const daysUntilMonday = day === 1 ? 7 : (8 - day) % 7 || 7
-  d.setDate(d.getDate() + daysUntilMonday)
+  const day = d.getDay()                      // 0 = Sun, 1 = Mon
+  const offset = day === 0 ? -6 : 1 - day     // back up to this week's Monday
+  d.setDate(d.getDate() + offset + offsetWeeks * 7)
   return d.toISOString().slice(0, 10)
 }
 
-export async function generateWeek() {
+export async function generateWeek(offsetWeeks: number = 0) {
+
   const [{ data: meals }, { data: ratings }, { data: tiffin }, { data: snacks }, { data: fruits }, { data: household }] =
     await Promise.all([
       supabase.from('meals').select('*'),
@@ -33,7 +34,7 @@ export async function generateWeek() {
       ((avgRating[r.meal_id] ?? 0) * (counts[r.meal_id] - 1) + r.rating) / counts[r.meal_id]
   }
 
-  const weekStart = nextMonday()
+  const weekStart = mondayOf(offsetWeeks)
 
   const plan = fillWeek({
     meals: (meals ?? []) as any,
