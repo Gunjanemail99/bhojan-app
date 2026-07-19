@@ -1,3 +1,5 @@
+import MarkCooked from './MarkCooked'
+
 const SLOTS = [
   { code: 'B', label: 'Breakfast', time: '8 am' },
   { code: 'T', label: 'Tiffin', time: 'school' },
@@ -24,7 +26,7 @@ export default function Today({
 
   return (
     <div>
-      {soakTasks.length > 0 && (
+        {soakTasks.length > 0 && (
         <div style={{ background: '#FDF6E7', border: '1px solid #F0D9A3', borderRadius: 8, padding: '10px 12px', marginBottom: 14 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#B87A0A', marginBottom: 4 }}>⏳ DO TONIGHT</div>
           {soakTasks.map((e) => (
@@ -56,6 +58,7 @@ export default function Today({
               {e.meals?.needs_soak && <> · ⏳ needed soaking</>}
               {cooked && <span style={{ color: '#2e7d32', fontWeight: 600 }}> · ✓ cooked</span>}
             </div>
+            <MarkCooked entryId={e.id} cooked={cooked} />
           </div>
         )
       })}
