@@ -5,6 +5,7 @@ import GenerateButton from '@/components/GenerateButton'
 import Today from '@/components/Today'
 import PrepAlert from '@/components/PrepAlert'
 import ShoppingList from '@/components/ShoppingList'
+import Insights from '@/components/Insights'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,7 +45,7 @@ export default async function Home() {
   const { data: planEntries } = plan
     ? await supabase
         .from('plan_entries')
-        .select('id, entry_date, slot, status, meals(name, effort, needs_soak, shop_items), tiffin_items(name, shop_items), snacks(name, shop_items), fruits(name, shop_items)')
+        .select('id, entry_date, slot, status, meals(name, effort, needs_soak, shop_items, calories, protein, carbs, fat, fiber), tiffin_items(name, shop_items, calories, protein, carbs, fat, fiber), snacks(name, shop_items, calories, protein, carbs, fat, fiber), fruits(name, shop_items, calories, protein, carbs, fat, fiber)')
         .eq('plan_id', plan.id)
     : { data: [] }
 
@@ -93,6 +94,11 @@ export default async function Home() {
           weekStart={plan?.week_start ?? ''}
           savedStatus={savedStatus}
         />
+      </section>
+      
+<section style={{ marginTop: 28 }}>
+        <h2>Insights</h2>
+        <Insights entries={planEntries ?? []} />
       </section>
 
       <section style={{ marginTop: 28 }}>
