@@ -1,14 +1,18 @@
 export default function ShoppingList({ entries }: { entries: any[] }) {
-  // derive: gather every ingredient across the week, remembering why
   const map: Record<string, string[]> = {}
 
   for (const e of entries) {
-    const items: string[] = e.meals?.shop_items ?? []
-    for (const item of items) {
-      const key = item.toLowerCase()
-      if (!map[key]) map[key] = []
-      const reason = `${e.meals.name.split('+')[0].trim()} (${e.entry_date.slice(5)})`
-      if (!map[key].includes(reason)) map[key].push(reason)
+    const sources = [e.meals, e.tiffin_items, e.snacks, e.fruits].filter(Boolean)
+    if (e.snacks) {
+      console.log('SNACK ROW:', e.slot, e.entry_date, '| name:', e.snacks.name, '| shop_items:', JSON.stringify(e.snacks.shop_items))
+    }
+    for (const src of sources) {
+      for (const item of (src.shop_items ?? [])) {
+        const key = String(item).toLowerCase()
+        if (!map[key]) map[key] = []
+        const reason = `${String(src.name).split('+')[0].trim()} (${e.entry_date.slice(5)})`
+        if (!map[key].includes(reason)) map[key].push(reason)
+      }
     }
   }
 

@@ -44,7 +44,7 @@ export default async function Home() {
   const { data: planEntries } = plan
     ? await supabase
         .from('plan_entries')
-        .select('id, entry_date, slot, status, meals(name, effort, needs_soak, shop_items), tiffin_items(name), snacks(name), fruits(name)')
+        .select('id, entry_date, slot, status, meals(name, effort, needs_soak, shop_items), tiffin_items(name, shop_items), snacks(name, shop_items), fruits(name, shop_items)')
         .eq('plan_id', plan.id)
     : { data: [] }
 
