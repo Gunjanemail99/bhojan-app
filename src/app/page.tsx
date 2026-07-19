@@ -48,6 +48,15 @@ export default async function Home() {
         .eq('plan_id', plan.id)
     : { data: [] }
 
+    const { data: householdRow } = await supabase.from('households').select('id').limit(1).maybeSingle()
+
+  const { data: statusRows } = plan
+    ? await supabase.from('shopping_status').select('item, status').eq('week_start', plan.week_start)
+    : { data: [] }
+
+  const savedStatus: Record<string, string> = {}
+  for (const r of statusRows ?? []) savedStatus[r.item] = r.status
+
   const bySlot = (slot: string) => meals?.filter((m) => m.slot === slot) ?? []
   const slotNames: Record<string, string> = { B: 'Breakfast', L: 'Lunch', D: 'Dinner' }
 
@@ -70,13 +79,20 @@ export default async function Home() {
         />
       </section>
 
+
+
       <section style={{ marginTop: 28 }}>
         <h2 style={{ display: 'inline' }}>This Week</h2>
         <GenerateButton />
               </section>
   <section style={{ marginTop: 28 }}>
         <h2>Shopping List</h2>
-        <ShoppingList entries={planEntries ?? []} />
+        <ShoppingList
+          entries={planEntries ?? []}
+          householdId={householdRow?.id ?? ''}
+          weekStart={plan?.week_start ?? ''}
+          savedStatus={savedStatus}
+        />
       </section>
 
       <section style={{ marginTop: 28 }}>

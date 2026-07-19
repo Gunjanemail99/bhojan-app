@@ -1,11 +1,14 @@
-export default function ShoppingList({ entries }: { entries: any[] }) {
+import ShopItem from './ShopItem'
+
+export default function ShoppingList({
+  entries, householdId, weekStart, savedStatus,
+}: {
+  entries: any[]; householdId: string; weekStart: string; savedStatus: Record<string, string>
+}) {
   const map: Record<string, string[]> = {}
 
   for (const e of entries) {
     const sources = [e.meals, e.tiffin_items, e.snacks, e.fruits].filter(Boolean)
-    if (e.snacks) {
-      console.log('SNACK ROW:', e.slot, e.entry_date, '| name:', e.snacks.name, '| shop_items:', JSON.stringify(e.snacks.shop_items))
-    }
     for (const src of sources) {
       for (const item of (src.shop_items ?? [])) {
         const key = String(item).toLowerCase()
@@ -16,26 +19,38 @@ export default function ShoppingList({ entries }: { entries: any[] }) {
     }
   }
 
-  const list = Object.entries(map).sort((a, b) => b[1].length - a[1].length)
+  const all = Object.entries(map).sort((a, b) => b[1].length - a[1].length)
+  if (all.length === 0) return <p style={{ color: '#888' }}>No plan to shop for.</p>
 
-  if (list.length === 0) return <p style={{ color: '#888' }}>No plan to shop for.</p>
+  const pending = all.filter(([i]) => (savedStatus[i] ?? 'pending') === 'pending')
+  const basket  = all.filter(([i]) => savedStatus[i] === 'need')
+  const have    = all.filter(([i]) => savedStatus[i] === 'have')
+
+  const section = (title: string, colour: string, rows: [string, string[]][]) =>
+    rows.length === 0 ? null : (
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: colour, marginBottom: 4 }}>{title}</div>
+        {rows.map(([item, reasons]) => (
+          <ShopItem
+            key={item}
+            item={item}
+            reasons={reasons}
+            householdId={householdId}
+            weekStart={weekStart}
+            initialStatus={savedStatus[item] ?? 'pending'}
+          />
+        ))}
+      </div>
+    )
 
   return (
     <div>
       <p style={{ fontSize: 13, color: '#666', marginTop: 0 }}>
-        {list.length} items derived from this week&apos;s plan
+        {pending.length} to sort · {basket.length} in basket · {have.length} already here
       </p>
-      {list.map(([item, reasons]) => (
-        <div key={item} style={{ padding: '7px 0', borderBottom: '1px solid #f4f4f4', fontSize: 14 }}>
-          <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{item}</span>
-          {reasons.length > 1 && (
-            <span style={{ marginLeft: 6, fontSize: 11, background: '#eef1f1', padding: '1px 6px', borderRadius: 10, color: '#556' }}>
-              ×{reasons.length}
-            </span>
-          )}
-          <div style={{ fontSize: 11, color: '#999' }}>{reasons.slice(0, 3).join(' · ')}</div>
-        </div>
-      ))}
+      {section('TO SORT — have it or need it?', '#555', pending)}
+      {section('🧺 BASKET', '#B87A0A', basket)}
+      {section('ALREADY IN THE KITCHEN', '#2e7d32', have)}
     </div>
   )
 }
