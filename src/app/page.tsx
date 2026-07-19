@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase'
 import RateMeal from '@/components/RateMeal'
 import WeekPlan from '@/components/WeekPlan'
 import GenerateButton from '@/components/GenerateButton'
+import Today from '@/components/Today'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +23,7 @@ export default async function Home() {
 
   const today = new Date().toISOString().slice(0, 10)
 
-  // the week we're currently in (started on or before today)
+   // the week we're currently in (started on or before today)
   const { data: currentPlan } = await supabase
     .from('plans').select('*')
     .lte('week_start', today)
@@ -41,7 +42,7 @@ export default async function Home() {
   const { data: planEntries } = plan
     ? await supabase
         .from('plan_entries')
-        .select('entry_date, slot, status, meals(name, effort), tiffin_items(name), snacks(name), fruits(name)')
+        .select('entry_date, slot, status, meals(name, effort, needs_soak), tiffin_items(name), snacks(name), fruits(name)')
         .eq('plan_id', plan.id)
     : { data: [] }
 
@@ -54,10 +55,19 @@ export default async function Home() {
       <p style={{ color: '#666', marginTop: 0 }}>Household Food Operating System</p>
 
       <section style={{ marginTop: 28 }}>
+        <h2>Today</h2>
+        <Today
+          entries={planEntries ?? []}
+          today="2026-07-20"
+          tomorrow="2026-07-21"
+        />
+      </section>
+
+      <section style={{ marginTop: 28 }}>
         <h2 style={{ display: 'inline' }}>This Week</h2>
         <GenerateButton />
-        <WeekPlan plan={plan} entries={planEntries ?? []} />
       </section>
+  
 
       <section style={{ marginTop: 28 }}>
         <h2>Household ({members?.length ?? 0})</h2>
